@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, ExternalLink } from "lucide-react";
-import type { CompanyProfile } from "../types";
+import { AlertCircle, ExternalLink, Clock, Landmark } from "lucide-react";
+import type { CompanyProfile, Grant, GrantAcceptanceStatus } from "../types";
 import { GRANTS } from "../data/grants";
 import { evaluateGrantMatch } from "../lib/matchEngine";
 import { StatusBadge } from "./StatusBadge";
@@ -9,6 +9,68 @@ import { MatchDetail } from "./MatchDetail";
 interface Props {
   profile: CompanyProfile;
   hasProfile: boolean;
+}
+
+const ACCEPTANCE_STATUS_MAP: Record<GrantAcceptanceStatus, { label: string; cls: string }> = {
+  rolling: { label: "全年受理", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  scheduled: { label: "依年度公告", cls: "bg-sky-50 text-sky-700 border-sky-200" },
+  loan: { label: "低利貸款非補助", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+};
+
+function AcceptanceBadge({ status }: { status: GrantAcceptanceStatus }) {
+  const m = ACCEPTANCE_STATUS_MAP[status];
+  return (
+    <span className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium shrink-0 ${m.cls}`}>
+      <Clock className="h-3 w-3" />
+      {m.label}
+    </span>
+  );
+}
+
+function GrantCard({ grant, profile, hasProfile }: { grant: Grant; profile: CompanyProfile; hasProfile: boolean }) {
+  const result = evaluateGrantMatch(hasProfile ? profile : null, grant.requirements);
+  return (
+    <div className="rounded-lg border border-slate-200 p-4 hover:border-slate-300 transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
+              {grant.category}
+            </span>
+            <AcceptanceBadge status={grant.acceptanceStatus} />
+          </div>
+          <h3 className="mt-1.5 text-sm font-semibold text-slate-800 leading-snug">{grant.name}</h3>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+            <span className="inline-flex items-center gap-1">
+              <Landmark className="h-3 w-3" />
+              {grant.agency}
+            </span>
+            <span>·</span>
+            <span>申請對象：{grant.applicantType}</span>
+          </div>
+        </div>
+        <StatusBadge status={result.status} />
+      </div>
+
+      <p className="mt-2 text-xs text-slate-600 leading-relaxed">{grant.summary}</p>
+
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+        <span>補助 {grant.amount}</span>
+        <span>·</span>
+        <span>申請期間 {grant.deadline}</span>
+      </div>
+
+      <MatchDetail result={result} />
+      <a
+        href={grant.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
+      >
+        官方計畫頁面 <ExternalLink className="h-3 w-3" />
+      </a>
+    </div>
+  );
 }
 
 export function GrantsTab({ profile, hasProfile }: Props) {
@@ -31,9 +93,16 @@ export function GrantsTab({ profile, hasProfile }: Props) {
             }`}
           >
             {c === "all" ? "全部" : c}
+            {c !== "all" && (
+              <span className="ml-1 text-slate-400">{GRANTS.filter((g) => g.category === c).length}</span>
+            )}
           </button>
         ))}
       </div>
+
+      <p className="text-xs text-slate-400">
+        共 {GRANTS.length} 筆補助計畫，目前顯示 {filtered.length} 筆
+      </p>
 
       {!hasProfile && (
         <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
@@ -43,43 +112,9 @@ export function GrantsTab({ profile, hasProfile }: Props) {
       )}
 
       <div className="space-y-3">
-        {filtered.map((g) => {
-          const result = evaluateGrantMatch(hasProfile ? profile : null, g.requirements);
-          return (
-            <div
-              key={g.id}
-              className="rounded-lg border border-slate-200 p-4 hover:border-slate-300 transition-colors"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
-                      {g.category}
-                    </span>
-                  </div>
-                  <h3 className="mt-1 text-sm font-semibold text-slate-800 leading-snug">{g.name}</h3>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                    <span>{g.agency}</span>
-                    <span>·</span>
-                    <span>補助 {g.amount}</span>
-                    <span>·</span>
-                    <span>申請期間 {g.deadline}</span>
-                  </div>
-                </div>
-                <StatusBadge status={result.status} />
-              </div>
-              <MatchDetail result={result} />
-              <a
-                href={g.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
-              >
-                官方計畫頁面 <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          );
-        })}
+        {filtered.map((g) => (
+          <GrantCard key={g.id} grant={g} profile={profile} hasProfile={hasProfile} />
+        ))}
       </div>
 
       <p className="text-xs text-slate-400">
