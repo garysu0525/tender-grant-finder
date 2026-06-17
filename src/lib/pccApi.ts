@@ -83,10 +83,17 @@ const EXTRA_REQUIREMENT_MARKER = "除上述外之其他資格";
 
 // 台灣標準行業代碼格式：1-2 個英文字母 + 5-6 位數字，後面接中文業別名稱
 const INDUSTRY_CODE_PATTERN = /[A-Z]{1,2}\d{5,6}[一-鿿（）()、,]{2,24}/g;
+const CODE_ID_PATTERN = /^[A-Z]{1,2}\d{5,6}/;
 
 export function parseQualificationSummary(raw: string | undefined | null): TenderQualificationInfo {
   if (!raw || !raw.trim()) {
-    return { cleanedSummary: null, hasExtraRequirement: false, flags: [], industryCodes: [] };
+    return {
+      cleanedSummary: null,
+      hasExtraRequirement: false,
+      flags: [],
+      industryCodes: [],
+      industryCodeIds: [],
+    };
   }
 
   const markerIdx = raw.indexOf(EXTRA_REQUIREMENT_MARKER);
@@ -100,6 +107,9 @@ export function parseQualificationSummary(raw: string | undefined | null): Tende
         )
       )
     : [];
+  const industryCodeIds = Array.from(
+    new Set(industryCodes.map((s) => (s.match(CODE_ID_PATTERN) || [])[0]).filter((s): s is string => Boolean(s)))
+  );
 
   const flags: TenderFlag[] = [];
   if (industryCodes.length > 0) {
@@ -117,7 +127,29 @@ export function parseQualificationSummary(raw: string | undefined | null): Tende
     hasExtraRequirement,
     flags,
     industryCodes,
+    industryCodeIds,
   };
+}
+
+export type IndustryCodeMatchStatus = "pass" | "fail" | "none";
+
+export interface IndustryCodeMatchResult {
+  status: IndustryCodeMatchStatus;
+  matchedCodes: string[];
+}
+
+// 用公司登記的所營事業代碼，比對標案要求的行業代碼限制。
+// "none" 代表這張標案沒有偵測到行業代碼限制，無需比對。
+export function evaluateIndustryCodeMatch(
+  qualification: TenderQualificationInfo,
+  companyBusinessCodes: string[] | undefined
+): IndustryCodeMatchResult {
+  if (qualification.industryCodeIds.length === 0) {
+    return { status: "none", matchedCodes: [] };
+  }
+  const have = new Set(companyBusinessCodes || []);
+  const matchedCodes = qualification.industryCodeIds.filter((c) => have.has(c));
+  return { status: matchedCodes.length > 0 ? "pass" : "fail", matchedCodes };
 }
 
 export async function fetchTenderDetail(unitId: string, jobNumber: string): Promise<TenderDetailInfo> {

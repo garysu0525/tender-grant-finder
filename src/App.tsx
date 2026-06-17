@@ -69,7 +69,7 @@ function App() {
       </nav>
 
       <main className="mx-auto max-w-4xl px-5 py-6">
-        {tab === "tenders" && <TendersTab hasProfile={hasProfile} />}
+        {tab === "tenders" && <TendersTab profile={profile} hasProfile={hasProfile} />}
         {tab === "grants" && <GrantsTab profile={profile} hasProfile={hasProfile} />}
         {tab === "profile" && (
           <div className="rounded-lg border border-slate-200 bg-white p-5">

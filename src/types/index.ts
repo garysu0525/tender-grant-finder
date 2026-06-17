@@ -13,6 +13,8 @@ export interface CompanyProfile {
   industry?: string;
   region?: string;
   certs?: string[];
+  taxId?: string;
+  businessCodes?: string[]; // 公司登記之所營事業行業代碼，從統一編號自動帶入
 }
 
 export interface RangeRequirement {
@@ -116,7 +118,8 @@ export interface TenderQualificationInfo {
   cleanedSummary: string | null;
   hasExtraRequirement: boolean;
   flags: TenderFlag[];
-  industryCodes: string[];
+  industryCodes: string[]; // 顯示用，含中文業別名稱
+  industryCodeIds: string[]; // 純代碼（例如 "CC01080"），用於跟公司登記代碼比對
 }
 
 export interface TenderListItem {
@@ -136,4 +139,38 @@ export interface TenderDetailInfo {
   deadline: string | null;
   bidOpenDate: string | null;
   qualification: TenderQualificationInfo;
+}
+
+// --- 經濟部商工行政資料開放平臺（統一編號自動帶入公司資料）---
+// 已用 data.gcis.nat.gov.tw 實測驗證的真實欄位結構
+
+export interface GcisBasicRecord {
+  Business_Accounting_NO: string;
+  Company_Name: string;
+  Company_Status_Desc: string;
+  Capital_Stock_Amount: number;
+  Paid_In_Capital_Amount: number;
+  Company_Location: string;
+  Company_Setup_Date: string; // 民國年，例如 "0760221"
+}
+
+export interface GcisBusinessItem {
+  Business_Seq_NO: string;
+  Business_Item: string; // 行業代碼，例如 "CC01080"；部分項目為純文字說明，此欄會是空白
+  Business_Item_Desc: string;
+}
+
+export interface GcisBusinessRecord {
+  Business_Accounting_NO: string;
+  Company_Name: string;
+  Cmp_Business: GcisBusinessItem[];
+}
+
+export interface ImportedCompanyInfo {
+  companyName: string;
+  foundedYear: string;
+  capital: string;
+  region: string | null; // 解析失敗則為 null，留給使用者自行選擇
+  businessCodes: string[];
+  rawAddress: string;
 }

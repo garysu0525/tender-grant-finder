@@ -7,12 +7,22 @@ import {
   ChevronDown,
   ChevronUp,
   HelpCircle,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
-import type { TenderDetailInfo, TenderListItem } from "../types";
-import { fetchTenderDetail, PccApiError, searchTenders } from "../lib/pccApi";
+import type { CompanyProfile, TenderDetailInfo, TenderListItem } from "../types";
+import { evaluateIndustryCodeMatch, fetchTenderDetail, PccApiError, searchTenders } from "../lib/pccApi";
 
-function TenderQualificationPanel({ detail }: { detail: TenderDetailInfo }) {
+function TenderQualificationPanel({
+  detail,
+  companyBusinessCodes,
+}: {
+  detail: TenderDetailInfo;
+  companyBusinessCodes: string[] | undefined;
+}) {
   const { qualification } = detail;
+  const codeMatch = evaluateIndustryCodeMatch(qualification, companyBusinessCodes);
+
   return (
     <div className="mt-3 space-y-2 rounded-md bg-slate-50 border border-slate-200 p-3">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
@@ -40,9 +50,28 @@ function TenderQualificationPanel({ detail }: { detail: TenderDetailInfo }) {
       )}
 
       {qualification.industryCodes.length > 0 && (
-        <p className="text-xs text-slate-600">
-          偵測到行業代碼限制：{qualification.industryCodes.join("、")}
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-slate-600">
+            偵測到行業代碼限制：{qualification.industryCodes.join("、")}
+          </p>
+          {codeMatch.status === "pass" && (
+            <p className="flex items-center gap-1 text-xs font-medium text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              貴公司登記之所營事業代碼含 {codeMatch.matchedCodes.join("、")}，符合此項代碼限制
+            </p>
+          )}
+          {codeMatch.status === "fail" && (
+            <p className="flex items-center gap-1 text-xs font-medium text-rose-700">
+              <XCircle className="h-3.5 w-3.5" />
+              貴公司登記的所營事業代碼未包含上述代碼，可能不符合此項限制
+            </p>
+          )}
+          {codeMatch.status !== "none" && (
+            <p className="text-[11px] text-slate-400">
+              （比對來源：公司資料分頁填寫的統一編號自動帶入所營事業代碼，僅供參考，請仍核對原始公告）
+            </p>
+          )}
+        </div>
       )}
 
       {qualification.hasExtraRequirement ? (
@@ -58,7 +87,13 @@ function TenderQualificationPanel({ detail }: { detail: TenderDetailInfo }) {
   );
 }
 
-function TenderCard({ tender }: { tender: TenderListItem }) {
+function TenderCard({
+  tender,
+  companyBusinessCodes,
+}: {
+  tender: TenderListItem;
+  companyBusinessCodes: string[] | undefined;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [detail, setDetail] = useState<TenderDetailInfo | null>(null);
   const [loading, setLoading] = useState(false);
@@ -130,12 +165,14 @@ function TenderCard({ tender }: { tender: TenderListItem }) {
         </div>
       )}
 
-      {expanded && !loading && !error && detail && <TenderQualificationPanel detail={detail} />}
+      {expanded && !loading && !error && detail && (
+        <TenderQualificationPanel detail={detail} companyBusinessCodes={companyBusinessCodes} />
+      )}
     </div>
   );
 }
 
-export function TendersTab({ hasProfile }: { hasProfile: boolean }) {
+export function TendersTab({ profile, hasProfile }: { profile: CompanyProfile; hasProfile: boolean }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TenderListItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -207,7 +244,7 @@ export function TendersTab({ hasProfile }: { hasProfile: boolean }) {
 
       <div className="space-y-3">
         {results.map((t) => (
-          <TenderCard key={t.id} tender={t} />
+          <TenderCard key={t.id} tender={t} companyBusinessCodes={profile.businessCodes} />
         ))}
 
         {searched && !loading && !error && results.length === 0 && (
