@@ -42,7 +42,17 @@ function AcceptanceBadge({ status }: { status: GrantAcceptanceStatus }) {
   );
 }
 
-function GrantCard({ grant, profile, hasProfile }: { grant: Grant; profile: CompanyProfile; hasProfile: boolean }) {
+function GrantCard({
+  grant,
+  profile,
+  hasProfile,
+  onGoToProfile,
+}: {
+  grant: Grant;
+  profile: CompanyProfile;
+  hasProfile: boolean;
+  onGoToProfile: () => void;
+}) {
   const result = evaluateGrantMatch(hasProfile ? profile : null, grant.requirements);
   return (
     <div className="rounded-lg border border-slate-200 p-4 hover:border-slate-300 transition-colors">
@@ -75,7 +85,7 @@ function GrantCard({ grant, profile, hasProfile }: { grant: Grant; profile: Comp
         <span>申請期間 {grant.deadline}</span>
       </div>
 
-      <MatchDetail result={result} />
+      <MatchDetail result={result} onGoToProfile={onGoToProfile} />
       <a
         href={grant.url}
         target="_blank"
@@ -403,7 +413,7 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
 
         <div className="space-y-3">
           {filtered.map((g) => (
-            <GrantCard key={g.id} grant={g} profile={profile} hasProfile={hasProfile} />
+            <GrantCard key={g.id} grant={g} profile={profile} hasProfile={hasProfile} onGoToProfile={onGoToProfile} />
           ))}
         </div>
 

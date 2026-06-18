@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, Plus, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Copy, Download, Loader2, Plus, X } from "lucide-react";
 import type { CompanyProfile } from "../types";
 import { CERT_OPTIONS, INDUSTRY_OPTIONS, REGION_OPTIONS } from "../data/grants";
 import { GcisApiError, importCompanyProfile } from "../lib/gcisApi";
+import { buildApplicationSummaryText, downloadTextFile } from "../lib/applicationSummary";
 
 interface Props {
   profile: CompanyProfile;
@@ -15,6 +16,25 @@ export function ProfileForm({ profile, setProfile }: Props) {
   const [importError, setImportError] = useState<string | null>(null);
   const [importedAddress, setImportedAddress] = useState<string | null>(null);
   const [customCertInput, setCustomCertInput] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const hasAnyData = Boolean(profile.companyName || profile.capital || profile.foundedYear);
+
+  const copySummary = async () => {
+    const text = buildApplicationSummaryText(profile);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      // 部分瀏覽器/非 HTTPS 環境會擋剪貼簿權限，靜默失敗即可，使用者仍可用下載功能
+    }
+  };
+
+  const downloadSummary = () => {
+    const text = buildApplicationSummaryText(profile);
+    downloadTextFile(`${profile.companyName || "公司資料"}_申請摘要.txt`, text);
+  };
 
   const update = (key: keyof CompanyProfile, value: string) =>
     setProfile((p) => ({ ...p, [key]: value }));
@@ -224,6 +244,33 @@ export function ProfileForm({ profile, setProfile }: Props) {
           </button>
         </div>
       </div>
+
+      {hasAnyData && (
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-medium text-slate-600">申請摘要（可複製貼到官方申請表單）</label>
+            <div className="flex gap-2">
+              <button
+                onClick={copySummary}
+                className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-600 hover:border-slate-400"
+              >
+                <Copy className="h-3 w-3" />
+                {copied ? "已複製！" : "複製摘要"}
+              </button>
+              <button
+                onClick={downloadSummary}
+                className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-600 hover:border-slate-400"
+              >
+                <Download className="h-3 w-3" />
+                下載文字檔
+              </button>
+            </div>
+          </div>
+          <pre className="whitespace-pre-wrap rounded-md border border-slate-200 bg-white p-2.5 text-xs text-slate-600 leading-relaxed">
+            {buildApplicationSummaryText(profile)}
+          </pre>
+        </div>
+      )}
 
       <p className="flex items-start gap-1.5 text-xs text-slate-400">
         <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
