@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
+  Bookmark,
+  BookmarkCheck,
   CheckCircle2,
   ExternalLink,
   Clock,
@@ -12,17 +14,37 @@ import {
   Search,
   XCircle,
 } from "lucide-react";
-import type { CompanyProfile, Grant, GrantAcceptanceStatus, LiveGrantItem, MatchStatus } from "../types";
+import type { CompanyProfile, Grant, GrantAcceptanceStatus, LiveGrantItem, MatchStatus, TrackedItem } from "../types";
 import { GRANTS } from "../data/grants";
 import { evaluateGrantMatch } from "../lib/matchEngine";
 import { fetchLiveGrants, daysUntil, LiveGrantsApiError } from "../lib/liveGrantsApi";
 import { StatusBadge } from "./StatusBadge";
 import { MatchDetail } from "./MatchDetail";
 
+type ToggleTracked = (item: Omit<TrackedItem, "status" | "addedAt">) => void;
+
 interface Props {
   profile: CompanyProfile;
   hasProfile: boolean;
   onGoToProfile: () => void;
+  tracked: TrackedItem[];
+  onToggleTracked: ToggleTracked;
+}
+
+function TrackButton({ tracked, onClick }: { tracked: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium shrink-0 transition-colors ${
+        tracked
+          ? "border-amber-300 bg-amber-50 text-amber-700"
+          : "border-slate-300 text-slate-500 hover:border-slate-400"
+      }`}
+    >
+      {tracked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+      {tracked ? "已追蹤" : "加入追蹤"}
+    </button>
+  );
 }
 
 const ACCEPTANCE_STATUS_MAP: Record<GrantAcceptanceStatus, { label: string; cls: string }> = {
@@ -47,11 +69,15 @@ function GrantCard({
   profile,
   hasProfile,
   onGoToProfile,
+  isTracked,
+  onToggleTracked,
 }: {
   grant: Grant;
   profile: CompanyProfile;
   hasProfile: boolean;
   onGoToProfile: () => void;
+  isTracked: boolean;
+  onToggleTracked: ToggleTracked;
 }) {
   const result = evaluateGrantMatch(hasProfile ? profile : null, grant.requirements);
   return (
@@ -74,7 +100,22 @@ function GrantCard({
             <span>申請對象：{grant.applicantType}</span>
           </div>
         </div>
-        <StatusBadge status={result.status} />
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <StatusBadge status={result.status} />
+          <TrackButton
+            tracked={isTracked}
+            onClick={() =>
+              onToggleTracked({
+                id: grant.id,
+                kind: "static-grant",
+                name: grant.name,
+                agency: grant.agency,
+                url: grant.url,
+                deadlineText: grant.deadline,
+              })
+            }
+          />
+        </div>
       </div>
 
       <p className="mt-2 text-xs text-slate-600 leading-relaxed">{grant.summary}</p>
@@ -103,7 +144,15 @@ const SOURCE_LABEL: Record<LiveGrantItem["source"], string> = {
   moc: "文化部",
 };
 
-function LiveGrantCard({ item }: { item: LiveGrantItem }) {
+function LiveGrantCard({
+  item,
+  isTracked,
+  onToggleTracked,
+}: {
+  item: LiveGrantItem;
+  isTracked: boolean;
+  onToggleTracked: ToggleTracked;
+}) {
   const remaining = daysUntil(item.endDate);
   return (
     <div className="rounded-lg border border-slate-200 p-4 hover:border-slate-300 transition-colors">
@@ -124,17 +173,32 @@ function LiveGrantCard({ item }: { item: LiveGrantItem }) {
           </div>
           <h3 className="mt-1.5 text-sm font-semibold text-slate-800 leading-snug">{item.title}</h3>
         </div>
-        {remaining != null ? (
-          <span className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 shrink-0">
-            <Clock className="h-3 w-3" />
-            距截止 {remaining} 天
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 shrink-0">
-            <Clock className="h-3 w-3" />
-            {item.startDate ? "受理中" : "即日起受理"}
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {remaining != null ? (
+            <span className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
+              <Clock className="h-3 w-3" />
+              距截止 {remaining} 天
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+              <Clock className="h-3 w-3" />
+              {item.startDate ? "受理中" : "即日起受理"}
+            </span>
+          )}
+          <TrackButton
+            tracked={isTracked}
+            onClick={() =>
+              onToggleTracked({
+                id: item.id,
+                kind: "live-grant",
+                name: item.title,
+                agency: item.category || SOURCE_LABEL[item.source],
+                url: item.url,
+                deadlineText: item.periodText,
+              })
+            }
+          />
+        </div>
       </div>
       {item.highlight && <p className="mt-2 text-xs text-slate-600 leading-relaxed line-clamp-3">{item.highlight}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
@@ -161,7 +225,15 @@ function matchesQuery(haystacks: (string | undefined)[], query: string): boolean
   return haystacks.some((h) => h?.toLowerCase().includes(q));
 }
 
-function LiveGrantsSection({ query }: { query: string }) {
+function LiveGrantsSection({
+  query,
+  trackedIds,
+  onToggleTracked,
+}: {
+  query: string;
+  trackedIds: Set<string>;
+  onToggleTracked: ToggleTracked;
+}) {
   const [items, setItems] = useState<LiveGrantItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -245,7 +317,12 @@ function LiveGrantsSection({ query }: { query: string }) {
         <>
           <div className="space-y-3">
             {visible.map((item) => (
-              <LiveGrantCard key={item.id} item={item} />
+              <LiveGrantCard
+                key={item.id}
+                item={item}
+                isTracked={trackedIds.has(item.id)}
+                onToggleTracked={onToggleTracked}
+              />
             ))}
           </div>
           {visibleCount < filtered.length && (
@@ -262,11 +339,12 @@ function LiveGrantsSection({ query }: { query: string }) {
   );
 }
 
-export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
+export function GrantsTab({ profile, hasProfile, onGoToProfile, tracked, onToggleTracked }: Props) {
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<MatchStatus | null>(null);
   const categories = useMemo(() => ["all", ...new Set(GRANTS.map((g) => g.category))], []);
+  const trackedIds = useMemo(() => new Set(tracked.map((t) => t.id)), [tracked]);
 
   const filtered = GRANTS.filter((g) => category === "all" || g.category === category)
     .filter((g) => matchesQuery([g.name, g.agency, g.category, g.summary], query))
@@ -370,7 +448,7 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
         />
       </div>
 
-      <LiveGrantsSection query={query} />
+      <LiveGrantsSection query={query} trackedIds={trackedIds} onToggleTracked={onToggleTracked} />
 
       <div ref={staticListRef} className="border-t border-slate-200 pt-4 space-y-4 scroll-mt-4">
         <div className="text-sm font-semibold text-slate-700">長期性計畫（彙整自各部會公開資訊）</div>
@@ -413,7 +491,15 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
 
         <div className="space-y-3">
           {filtered.map((g) => (
-            <GrantCard key={g.id} grant={g} profile={profile} hasProfile={hasProfile} onGoToProfile={onGoToProfile} />
+            <GrantCard
+              key={g.id}
+              grant={g}
+              profile={profile}
+              hasProfile={hasProfile}
+              onGoToProfile={onGoToProfile}
+              isTracked={trackedIds.has(g.id)}
+              onToggleTracked={onToggleTracked}
+            />
           ))}
         </div>
 

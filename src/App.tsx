@@ -1,21 +1,49 @@
-import { useState } from "react";
-import { Building2, FileSearch, ClipboardCheck } from "lucide-react";
-import type { CompanyProfile } from "./types";
+import { useEffect, useState } from "react";
+import { Building2, FileSearch, ClipboardCheck, Bookmark } from "lucide-react";
+import type { CompanyProfile, TrackedItem } from "./types";
 import { TendersTab } from "./components/TendersTab";
 import { GrantsTab } from "./components/GrantsTab";
 import { ProfileForm } from "./components/ProfileForm";
+import { TrackedTab } from "./components/TrackedTab";
+import { loadFromStorage, saveToStorage, STORAGE_KEYS } from "./lib/storage";
 
-type TabId = "tenders" | "grants" | "profile";
+type TabId = "tenders" | "grants" | "tracked" | "profile";
 
 function App() {
   const [tab, setTab] = useState<TabId>("tenders");
-  const [profile, setProfile] = useState<CompanyProfile>({});
+  const [profile, setProfile] = useState<CompanyProfile>(() => loadFromStorage(STORAGE_KEYS.profile, {}));
+  const [tracked, setTracked] = useState<TrackedItem[]>(() => loadFromStorage(STORAGE_KEYS.tracked, []));
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.profile, profile);
+  }, [profile]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.tracked, tracked);
+  }, [tracked]);
 
   const hasProfile = Boolean(profile.companyName || profile.capital || profile.foundedYear);
+
+  const toggleTracked = (item: Omit<TrackedItem, "status" | "addedAt">) => {
+    setTracked((list) => {
+      const exists = list.find((t) => t.id === item.id);
+      if (exists) return list.filter((t) => t.id !== item.id);
+      return [...list, { ...item, status: "interested", addedAt: new Date().toISOString() }];
+    });
+  };
+
+  const updateTrackedStatus = (id: string, status: TrackedItem["status"]) => {
+    setTracked((list) => list.map((t) => (t.id === id ? { ...t, status } : t)));
+  };
+
+  const removeTracked = (id: string) => {
+    setTracked((list) => list.filter((t) => t.id !== id));
+  };
 
   const tabs: { id: TabId; label: string; icon: typeof FileSearch }[] = [
     { id: "tenders", label: "標案查詢", icon: FileSearch },
     { id: "grants", label: "補助查詢", icon: ClipboardCheck },
+    { id: "tracked", label: "我要申請", icon: Bookmark },
     { id: "profile", label: "公司資料", icon: Building2 },
   ];
 
@@ -61,6 +89,11 @@ function App() {
                   {t.id === "profile" && !hasProfile && (
                     <span className="ml-1 h-1.5 w-1.5 rounded-full bg-amber-400" />
                   )}
+                  {t.id === "tracked" && tracked.length > 0 && (
+                    <span className="ml-1 rounded-full bg-slate-200 px-1.5 text-[10px] text-slate-600">
+                      {tracked.length}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -71,7 +104,21 @@ function App() {
       <main className="mx-auto max-w-4xl px-5 py-6">
         {tab === "tenders" && <TendersTab profile={profile} hasProfile={hasProfile} />}
         {tab === "grants" && (
-          <GrantsTab profile={profile} hasProfile={hasProfile} onGoToProfile={() => setTab("profile")} />
+          <GrantsTab
+            profile={profile}
+            hasProfile={hasProfile}
+            onGoToProfile={() => setTab("profile")}
+            tracked={tracked}
+            onToggleTracked={toggleTracked}
+          />
+        )}
+        {tab === "tracked" && (
+          <TrackedTab
+            tracked={tracked}
+            onUpdateStatus={updateTrackedStatus}
+            onRemove={removeTracked}
+            onGoToGrants={() => setTab("grants")}
+          />
         )}
         {tab === "profile" && (
           <div className="rounded-lg border border-slate-200 bg-white p-5">

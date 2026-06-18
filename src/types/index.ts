@@ -205,3 +205,19 @@ export interface LiveGrantsResponse {
   fetchedAt: string;
   partial?: boolean; // 若為 true，代表至少一個來源抓取失敗，items 可能不完整
 }
+
+// --- 「我要申請」追蹤清單（存在瀏覽器 localStorage，不上傳伺服器）---
+
+export type TrackedKind = "static-grant" | "live-grant";
+export type TrackedStatus = "interested" | "preparing" | "submitted";
+
+export interface TrackedItem {
+  id: string; // 對應 Grant.id 或 LiveGrantItem.id
+  kind: TrackedKind;
+  name: string;
+  agency: string;
+  url: string;
+  deadlineText: string | null; // 顯示用，例如「依年度公告期間」或精確日期字串
+  status: TrackedStatus;
+  addedAt: string; // ISO 時間戳
+}

@@ -274,7 +274,7 @@ export function ProfileForm({ profile, setProfile }: Props) {
 
       <p className="flex items-start gap-1.5 text-xs text-slate-400">
         <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-        公司資料僅暫存於本次瀏覽器頁面中，重新整理頁面後將會清空，不會上傳或儲存到任何伺服器。
+        公司資料會自動儲存在這台瀏覽器（localStorage），重新整理頁面不會消失；但換瀏覽器或裝置不會同步，且不會上傳或儲存到任何伺服器。
       </p>
     </div>
   );
