@@ -211,6 +211,12 @@ export interface LiveGrantsResponse {
 export type TrackedKind = "static-grant" | "live-grant";
 export type TrackedStatus = "interested" | "preparing" | "submitted";
 
+export interface ChecklistItem {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
 export interface TrackedItem {
   id: string; // 對應 Grant.id 或 LiveGrantItem.id
   kind: TrackedKind;
@@ -218,6 +224,8 @@ export interface TrackedItem {
   agency: string;
   url: string;
   deadlineText: string | null; // 顯示用，例如「依年度公告期間」或精確日期字串
+  endDate: string | null; // ISO 日期時間，加入追蹤當下記錄的精確截止日（只有即時公告有），用於倒數提醒與時程規劃
   status: TrackedStatus;
   addedAt: string; // ISO 時間戳
+  checklist: ChecklistItem[];
 }

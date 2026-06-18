@@ -6,13 +6,26 @@ import { GrantsTab } from "./components/GrantsTab";
 import { ProfileForm } from "./components/ProfileForm";
 import { TrackedTab } from "./components/TrackedTab";
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from "./lib/storage";
+import { buildDefaultChecklist } from "./lib/applicationChecklist";
 
 type TabId = "tenders" | "grants" | "tracked" | "profile";
+
+// 相容舊版（Phase 2）存在 localStorage 但沒有 checklist/endDate 欄位的追蹤項目，
+// 讀取時補上預設值，避免讀到舊資料時整頁當掉。
+function normalizeTracked(items: TrackedItem[]): TrackedItem[] {
+  return items.map((t) => ({
+    ...t,
+    endDate: t.endDate ?? null,
+    checklist: t.checklist ?? buildDefaultChecklist(),
+  }));
+}
 
 function App() {
   const [tab, setTab] = useState<TabId>("tenders");
   const [profile, setProfile] = useState<CompanyProfile>(() => loadFromStorage(STORAGE_KEYS.profile, {}));
-  const [tracked, setTracked] = useState<TrackedItem[]>(() => loadFromStorage(STORAGE_KEYS.tracked, []));
+  const [tracked, setTracked] = useState<TrackedItem[]>(() =>
+    normalizeTracked(loadFromStorage(STORAGE_KEYS.tracked, []))
+  );
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.profile, profile);
@@ -38,6 +51,16 @@ function App() {
 
   const removeTracked = (id: string) => {
     setTracked((list) => list.filter((t) => t.id !== id));
+  };
+
+  const toggleChecklistItem = (trackedId: string, checklistId: string) => {
+    setTracked((list) =>
+      list.map((t) =>
+        t.id === trackedId
+          ? { ...t, checklist: t.checklist.map((c) => (c.id === checklistId ? { ...c, done: !c.done } : c)) }
+          : t
+      )
+    );
   };
 
   const tabs: { id: TabId; label: string; icon: typeof FileSearch }[] = [
@@ -118,6 +141,7 @@ function App() {
             onUpdateStatus={updateTrackedStatus}
             onRemove={removeTracked}
             onGoToGrants={() => setTab("grants")}
+            onToggleChecklistItem={toggleChecklistItem}
           />
         )}
         {tab === "profile" && (

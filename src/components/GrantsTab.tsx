@@ -18,6 +18,7 @@ import type { CompanyProfile, Grant, GrantAcceptanceStatus, LiveGrantItem, Match
 import { GRANTS } from "../data/grants";
 import { evaluateGrantMatch } from "../lib/matchEngine";
 import { fetchLiveGrants, daysUntil, LiveGrantsApiError } from "../lib/liveGrantsApi";
+import { buildDefaultChecklist } from "../lib/applicationChecklist";
 import { StatusBadge } from "./StatusBadge";
 import { MatchDetail } from "./MatchDetail";
 
@@ -112,6 +113,8 @@ function GrantCard({
                 agency: grant.agency,
                 url: grant.url,
                 deadlineText: grant.deadline,
+                endDate: null,
+                checklist: buildDefaultChecklist(grant.requirements.note),
               })
             }
           />
@@ -195,6 +198,8 @@ function LiveGrantCard({
                 agency: item.category || SOURCE_LABEL[item.source],
                 url: item.url,
                 deadlineText: item.periodText,
+                endDate: item.endDate,
+                checklist: buildDefaultChecklist(),
               })
             }
           />
