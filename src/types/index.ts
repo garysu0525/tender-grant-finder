@@ -38,7 +38,7 @@ export interface GrantRequirements {
   note?: string;
 }
 
-export type GrantAcceptanceStatus = "rolling" | "scheduled" | "loan";
+export type GrantAcceptanceStatus = "rolling" | "scheduled" | "loan" | "investment";
 
 export interface Grant {
   id: string;
@@ -47,7 +47,7 @@ export interface Grant {
   category: string;
   summary: string; // 一句話白話摘要，幫助使用者快速判斷是否相關
   applicantType: string; // 申請對象，例如「中小企業／公司」「團體／非營利組織」
-  acceptanceStatus: GrantAcceptanceStatus; // rolling=全年受理、scheduled=依年度公告期間、loan=低利貸款非無償補助
+  acceptanceStatus: GrantAcceptanceStatus; // rolling=全年受理、scheduled=依年度公告期間、loan=低利貸款非無償補助、investment=股權投資非補助
   amount: string;
   deadline: string;
   url: string;

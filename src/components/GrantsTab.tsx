@@ -17,6 +17,7 @@ const ACCEPTANCE_STATUS_MAP: Record<GrantAcceptanceStatus, { label: string; cls:
   rolling: { label: "全年受理", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   scheduled: { label: "依年度公告", cls: "bg-sky-50 text-sky-700 border-sky-200" },
   loan: { label: "低利貸款非補助", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  investment: { label: "股權投資非補助", cls: "bg-violet-50 text-violet-700 border-violet-200" },
 };
 
 function AcceptanceBadge({ status }: { status: GrantAcceptanceStatus }) {
