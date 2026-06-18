@@ -179,3 +179,25 @@ export interface ImportedCompanyInfo {
   businessCodes: string[];
   rawAddress: string;
 }
+
+// --- 即時補助公告（國科會計畫徵求專區，由 /api/live-grants 即時抓取）---
+// 國科會頁面是伺服器端渲染 HTML，不需要無頭瀏覽器；每筆公告有精確徵求期間，可顯示真實倒數。
+
+export interface LiveGrantItem {
+  id: string;
+  source: "nstc";
+  title: string;
+  highlight: string;
+  phase: string;
+  category: string;
+  area: string;
+  periodText: string;
+  startDate: string | null; // ISO 日期
+  endDate: string | null;
+  url: string;
+}
+
+export interface LiveGrantsResponse {
+  items: LiveGrantItem[];
+  fetchedAt: string;
+}
