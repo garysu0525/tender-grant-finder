@@ -115,6 +115,8 @@ function GrantCard({
                 deadlineText: grant.deadline,
                 endDate: null,
                 checklist: buildDefaultChecklist(grant.requirements.note),
+                grantSummary: grant.summary,
+                requirementNotes: grant.requirements.note,
               })
             }
           />
@@ -200,6 +202,7 @@ function LiveGrantCard({
                 deadlineText: item.periodText,
                 endDate: item.endDate,
                 checklist: buildDefaultChecklist(),
+                grantSummary: item.highlight,
               })
             }
           />

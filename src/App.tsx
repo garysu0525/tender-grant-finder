@@ -63,6 +63,14 @@ function App() {
     );
   };
 
+  const updateProjectDescription = (id: string, projectDescription: string) => {
+    setTracked((list) => list.map((t) => (t.id === id ? { ...t, projectDescription } : t)));
+  };
+
+  const updateAiDraft = (id: string, aiDraft: string) => {
+    setTracked((list) => list.map((t) => (t.id === id ? { ...t, aiDraft } : t)));
+  };
+
   const tabs: { id: TabId; label: string; icon: typeof FileSearch }[] = [
     { id: "tenders", label: "標案查詢", icon: FileSearch },
     { id: "grants", label: "補助查詢", icon: ClipboardCheck },
@@ -138,10 +146,13 @@ function App() {
         {tab === "tracked" && (
           <TrackedTab
             tracked={tracked}
+            profile={profile}
             onUpdateStatus={updateTrackedStatus}
             onRemove={removeTracked}
             onGoToGrants={() => setTab("grants")}
             onToggleChecklistItem={toggleChecklistItem}
+            onUpdateProjectDescription={updateProjectDescription}
+            onUpdateAiDraft={updateAiDraft}
           />
         )}
         {tab === "profile" && (

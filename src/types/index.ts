@@ -228,4 +228,8 @@ export interface TrackedItem {
   status: TrackedStatus;
   addedAt: string; // ISO 時間戳
   checklist: ChecklistItem[];
+  grantSummary?: string; // 加入追蹤當下記錄的計畫簡介，供 AI 草稿生成使用
+  requirementNotes?: string;
+  projectDescription?: string; // 使用者填寫的「這次申請想做的計畫/產品簡述」，AI 草稿生成的關鍵輸入
+  aiDraft?: string; // AI 生成的申請草稿（使用者可編輯）
 }

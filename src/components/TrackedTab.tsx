@@ -1,15 +1,33 @@
 import { useState } from "react";
-import { ExternalLink, Trash2, Bookmark, Clock, ChevronDown, ChevronUp, ListChecks } from "lucide-react";
-import type { TrackedItem, TrackedStatus } from "../types";
+import {
+  ExternalLink,
+  Trash2,
+  Bookmark,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  ListChecks,
+  Sparkles,
+  Loader2,
+  Copy,
+  Download,
+  AlertCircle,
+} from "lucide-react";
+import type { CompanyProfile, TrackedItem, TrackedStatus } from "../types";
 import { daysUntil } from "../lib/liveGrantsApi";
 import { buildPrepTimeline } from "../lib/prepTimeline";
+import { generateDraft, getSavedAccessCode, saveAccessCode, DraftApiError } from "../lib/draftApi";
+import { downloadTextFile } from "../lib/applicationSummary";
 
 interface Props {
   tracked: TrackedItem[];
+  profile: CompanyProfile;
   onUpdateStatus: (id: string, status: TrackedStatus) => void;
   onRemove: (id: string) => void;
   onGoToGrants: () => void;
   onToggleChecklistItem: (trackedId: string, checklistId: string) => void;
+  onUpdateProjectDescription: (id: string, text: string) => void;
+  onUpdateAiDraft: (id: string, text: string) => void;
 }
 
 const STATUS_OPTIONS: { value: TrackedStatus; label: string }[] = [
@@ -41,19 +59,148 @@ function CountdownBadge({ endDate }: { endDate: string | null }) {
   );
 }
 
+function AiDraftSection({
+  item,
+  profile,
+  onUpdateProjectDescription,
+  onUpdateAiDraft,
+}: {
+  item: TrackedItem;
+  profile: CompanyProfile;
+  onUpdateProjectDescription: (id: string, text: string) => void;
+  onUpdateAiDraft: (id: string, text: string) => void;
+}) {
+  const [accessCode, setAccessCode] = useState(getSavedAccessCode());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runGenerate = async () => {
+    if (!item.projectDescription?.trim()) {
+      setError("請先填寫上面「這次申請想做的計畫／產品簡述」再生成草稿");
+      return;
+    }
+    if (!accessCode.trim()) {
+      setError("請輸入存取密碼");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    saveAccessCode(accessCode.trim());
+    try {
+      const draft = await generateDraft({
+        accessCode: accessCode.trim(),
+        companyName: profile.companyName,
+        foundedYear: profile.foundedYear,
+        capital: profile.capital,
+        industry: profile.industry,
+        grantName: item.name,
+        agency: item.agency,
+        grantSummary: item.grantSummary,
+        requirementNotes: item.requirementNotes,
+        projectDescription: item.projectDescription,
+      });
+      onUpdateAiDraft(item.id, draft);
+    } catch (e) {
+      setError(e instanceof DraftApiError ? e.message : "生成失敗，請稍後再試");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 space-y-2 rounded-md bg-slate-50 border border-slate-200 p-2.5">
+      <div>
+        <label className="block text-[11px] font-medium text-slate-500 mb-1">這次申請想做的計畫／產品簡述</label>
+        <textarea
+          value={item.projectDescription || ""}
+          onChange={(e) => onUpdateProjectDescription(item.id, e.target.value)}
+          placeholder="例如：開發一款結合 AI 角色互動的手機遊戲，目前已完成原型，這筆補助想用於擴充美術與伺服器成本"
+          rows={2}
+          className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-xs focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="password"
+          value={accessCode}
+          onChange={(e) => setAccessCode(e.target.value)}
+          placeholder="存取密碼"
+          className="w-28 rounded-md border border-slate-300 px-2 py-1.5 text-xs focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+        />
+        <button
+          onClick={runGenerate}
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded-md bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-40"
+        >
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          AI 生成申請草稿
+        </button>
+      </div>
+
+      {error && (
+        <p className="flex items-start gap-1.5 text-xs text-rose-600">
+          <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          {error}
+        </p>
+      )}
+
+      {item.aiDraft && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-slate-500">AI 生成草稿（可編輯）</span>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => navigator.clipboard?.writeText(item.aiDraft || "").catch(() => {})}
+                className="flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-600 hover:border-slate-400"
+              >
+                <Copy className="h-3 w-3" />
+                複製
+              </button>
+              <button
+                onClick={() => downloadTextFile(`${item.name}_AI草稿.txt`, item.aiDraft || "")}
+                className="flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-600 hover:border-slate-400"
+              >
+                <Download className="h-3 w-3" />
+                下載
+              </button>
+            </div>
+          </div>
+          <textarea
+            value={item.aiDraft}
+            onChange={(e) => onUpdateAiDraft(item.id, e.target.value)}
+            rows={8}
+            className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-xs leading-relaxed focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          />
+          <p className="text-[11px] text-amber-700">
+            ⚠ AI 草稿僅供參考，可能不夠精確或遺漏細節，請務必自行查核修改後再使用，不保證內容正確性或申請核准機率。
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TrackedCard({
   item,
+  profile,
   onUpdateStatus,
   onRemove,
   onToggleChecklistItem,
+  onUpdateProjectDescription,
+  onUpdateAiDraft,
 }: {
   item: TrackedItem;
+  profile: CompanyProfile;
   onUpdateStatus: (id: string, status: TrackedStatus) => void;
   onRemove: (id: string) => void;
   onToggleChecklistItem: (trackedId: string, checklistId: string) => void;
+  onUpdateProjectDescription: (id: string, text: string) => void;
+  onUpdateAiDraft: (id: string, text: string) => void;
 }) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+  const [showAiDraft, setShowAiDraft] = useState(false);
   const timeline = item.endDate ? buildPrepTimeline(item.endDate) : [];
   const doneCount = item.checklist.filter((c) => c.done).length;
 
@@ -121,6 +268,14 @@ function TrackedCard({
             建議準備時程
           </button>
         )}
+        <button
+          onClick={() => setShowAiDraft((s) => !s)}
+          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
+        >
+          {showAiDraft ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          <Sparkles className="h-3.5 w-3.5" />
+          AI 申請草稿
+        </button>
       </div>
 
       {showChecklist && (
@@ -155,11 +310,29 @@ function TrackedCard({
           </p>
         </div>
       )}
+
+      {showAiDraft && (
+        <AiDraftSection
+          item={item}
+          profile={profile}
+          onUpdateProjectDescription={onUpdateProjectDescription}
+          onUpdateAiDraft={onUpdateAiDraft}
+        />
+      )}
     </div>
   );
 }
 
-export function TrackedTab({ tracked, onUpdateStatus, onRemove, onGoToGrants, onToggleChecklistItem }: Props) {
+export function TrackedTab({
+  tracked,
+  profile,
+  onUpdateStatus,
+  onRemove,
+  onGoToGrants,
+  onToggleChecklistItem,
+  onUpdateProjectDescription,
+  onUpdateAiDraft,
+}: Props) {
   if (tracked.length === 0) {
     return (
       <div className="space-y-4">
@@ -191,9 +364,12 @@ export function TrackedTab({ tracked, onUpdateStatus, onRemove, onGoToGrants, on
           <TrackedCard
             key={item.id}
             item={item}
+            profile={profile}
             onUpdateStatus={onUpdateStatus}
             onRemove={onRemove}
             onToggleChecklistItem={onToggleChecklistItem}
+            onUpdateProjectDescription={onUpdateProjectDescription}
+            onUpdateAiDraft={onUpdateAiDraft}
           />
         ))}
       </div>
