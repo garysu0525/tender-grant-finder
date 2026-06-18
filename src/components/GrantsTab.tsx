@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowRight, ExternalLink, Clock, Landmark, Loader2, Radio, Search } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  ExternalLink,
+  Clock,
+  HelpCircle,
+  Landmark,
+  Loader2,
+  Radio,
+  Search,
+  XCircle,
+} from "lucide-react";
 import type { CompanyProfile, Grant, GrantAcceptanceStatus, LiveGrantItem } from "../types";
 import { GRANTS } from "../data/grants";
 import { evaluateGrantMatch } from "../lib/matchEngine";
@@ -249,6 +261,20 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
     matchesQuery([g.name, g.agency, g.category, g.summary], query)
   );
 
+  const matchSummary = useMemo(() => {
+    if (!hasProfile) return null;
+    let pass = 0;
+    let unknown = 0;
+    let fail = 0;
+    for (const g of GRANTS) {
+      const status = evaluateGrantMatch(profile, g.requirements).status;
+      if (status === "pass") pass++;
+      else if (status === "fail") fail++;
+      else unknown++;
+    }
+    return { pass, unknown, fail };
+  }, [hasProfile, profile]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -268,6 +294,31 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
             前往建立 <ArrowRight className="h-3 w-3" />
           </span>
         </button>
+      )}
+
+      {hasProfile && matchSummary && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-800">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="font-medium">
+              已套用「{profile.companyName || "您的公司"}」資料比對 {GRANTS.length} 筆長期性計畫：
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              符合 {matchSummary.pass}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <HelpCircle className="h-3.5 w-3.5 text-amber-600" />
+              待確認 {matchSummary.unknown}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <XCircle className="h-3.5 w-3.5 text-rose-600" />
+              不符 {matchSummary.fail}
+            </span>
+          </div>
+          <button onClick={onGoToProfile} className="inline-flex items-center gap-1 font-medium hover:underline">
+            編輯公司資料 <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
       )}
 
       <div className="relative">
