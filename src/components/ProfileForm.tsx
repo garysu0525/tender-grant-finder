@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Plus, X } from "lucide-react";
 import type { CompanyProfile } from "../types";
 import { CERT_OPTIONS, INDUSTRY_OPTIONS, REGION_OPTIONS } from "../data/grants";
 import { GcisApiError, importCompanyProfile } from "../lib/gcisApi";
@@ -14,6 +14,7 @@ export function ProfileForm({ profile, setProfile }: Props) {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importedAddress, setImportedAddress] = useState<string | null>(null);
+  const [customCertInput, setCustomCertInput] = useState("");
 
   const update = (key: keyof CompanyProfile, value: string) =>
     setProfile((p) => ({ ...p, [key]: value }));
@@ -27,6 +28,18 @@ export function ProfileForm({ profile, setProfile }: Props) {
       };
     });
   };
+
+  const addCustomCert = () => {
+    const cert = customCertInput.trim();
+    if (!cert) return;
+    setProfile((p) => {
+      const certs = p.certs || [];
+      return certs.includes(cert) ? p : { ...p, certs: [...certs, cert] };
+    });
+    setCustomCertInput("");
+  };
+
+  const customCerts = (profile.certs || []).filter((c) => !CERT_OPTIONS.includes(c));
 
   const runImport = async () => {
     setImporting(true);
@@ -181,6 +194,34 @@ export function ProfileForm({ profile, setProfile }: Props) {
               {cert}
             </button>
           ))}
+          {customCerts.map((cert) => (
+            <button
+              key={cert}
+              onClick={() => toggleCert(cert)}
+              className="flex items-center gap-1 rounded-full border border-slate-700 bg-slate-700 px-3 py-1 text-xs text-white"
+            >
+              {cert}
+              <X className="h-3 w-3" />
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 flex gap-2">
+          <input
+            type="text"
+            value={customCertInput}
+            onChange={(e) => setCustomCertInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomCert())}
+            placeholder="新增其他證照，例如：ISO14001、CE 認證"
+            className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-xs focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          />
+          <button
+            onClick={addCustomCert}
+            disabled={!customCertInput.trim()}
+            className="flex items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:border-slate-400 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Plus className="h-3 w-3" />
+            新增
+          </button>
         </div>
       </div>
 
