@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ExternalLink, Clock, Landmark, Loader2, Radio } from "lucide-react";
+import { AlertCircle, ArrowRight, ExternalLink, Clock, Landmark, Loader2, Radio, Search } from "lucide-react";
 import type { CompanyProfile, Grant, GrantAcceptanceStatus, LiveGrantItem } from "../types";
 import { GRANTS } from "../data/grants";
 import { evaluateGrantMatch } from "../lib/matchEngine";
@@ -10,6 +10,7 @@ import { MatchDetail } from "./MatchDetail";
 interface Props {
   profile: CompanyProfile;
   hasProfile: boolean;
+  onGoToProfile: () => void;
 }
 
 const ACCEPTANCE_STATUS_MAP: Record<GrantAcceptanceStatus, { label: string; cls: string }> = {
@@ -131,12 +132,22 @@ function LiveGrantCard({ item }: { item: LiveGrantItem }) {
 
 const LIVE_PAGE_SIZE = 10;
 
-function LiveGrantsSection() {
+function matchesQuery(haystacks: (string | undefined)[], query: string): boolean {
+  if (!query.trim()) return true;
+  const q = query.trim().toLowerCase();
+  return haystacks.some((h) => h?.toLowerCase().includes(q));
+}
+
+function LiveGrantsSection({ query }: { query: string }) {
   const [items, setItems] = useState<LiveGrantItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<"all" | LiveGrantItem["source"]>("all");
   const [visibleCount, setVisibleCount] = useState(LIVE_PAGE_SIZE);
+
+  useEffect(() => {
+    setVisibleCount(LIVE_PAGE_SIZE);
+  }, [query]);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,7 +166,9 @@ function LiveGrantsSection() {
     };
   }, []);
 
-  const filtered = (items || []).filter((i) => sourceFilter === "all" || i.source === sourceFilter);
+  const filtered = (items || [])
+    .filter((i) => sourceFilter === "all" || i.source === sourceFilter)
+    .filter((i) => matchesQuery([i.title, i.category, i.area], query));
   const visible = filtered.slice(0, visibleCount);
   const nstcCount = (items || []).filter((i) => i.source === "nstc").length;
   const mocCount = (items || []).filter((i) => i.source === "moc").length;
@@ -226,15 +239,48 @@ function LiveGrantsSection() {
   );
 }
 
-export function GrantsTab({ profile, hasProfile }: Props) {
+export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
   const [category, setCategory] = useState("all");
+  const [query, setQuery] = useState("");
   const categories = useMemo(() => ["all", ...new Set(GRANTS.map((g) => g.category))], []);
 
-  const filtered = GRANTS.filter((g) => category === "all" || g.category === category);
+  const filtered = GRANTS.filter((g) => category === "all" || g.category === category).filter((g) =>
+    matchesQuery([g.name, g.agency, g.category, g.summary], query)
+  );
 
   return (
     <div className="space-y-6">
-      <LiveGrantsSection />
+      <div>
+        <h2 className="text-base font-bold text-slate-800">補助查詢</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          常見全國型補助計畫可即時比對資格；另彙整文化部、國科會等「開放申請中」即時公告。
+        </p>
+      </div>
+
+      {!hasProfile && (
+        <button
+          onClick={onGoToProfile}
+          className="flex w-full items-center justify-between rounded-md border border-sky-200 bg-sky-50 px-3 py-2.5 text-left text-xs text-sky-800 hover:border-sky-300"
+        >
+          <span>建立公司資料後，可自動比對每項補助的申請資格。</span>
+          <span className="inline-flex items-center gap-1 font-medium shrink-0">
+            前往建立 <ArrowRight className="h-3 w-3" />
+          </span>
+        </button>
+      )}
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="搜尋補助計畫名稱、機關、類別，例如「研發」「數位」「文化」"
+          className="w-full rounded-md border border-slate-300 pl-9 pr-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+        />
+      </div>
+
+      <LiveGrantsSection query={query} />
 
       <div className="border-t border-slate-200 pt-4 space-y-4">
         <div className="text-sm font-semibold text-slate-700">長期性計畫（彙整自各部會公開資訊）</div>
@@ -261,13 +307,6 @@ export function GrantsTab({ profile, hasProfile }: Props) {
         <p className="text-xs text-slate-400">
           共 {GRANTS.length} 筆補助計畫，目前顯示 {filtered.length} 筆
         </p>
-
-        {!hasProfile && (
-          <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            填寫「公司資料」分頁後，這裡會自動標示每個補助計畫的申請資格符合度。
-          </div>
-        )}
 
         <div className="space-y-3">
           {filtered.map((g) => (

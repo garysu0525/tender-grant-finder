@@ -70,7 +70,9 @@ function App() {
 
       <main className="mx-auto max-w-4xl px-5 py-6">
         {tab === "tenders" && <TendersTab profile={profile} hasProfile={hasProfile} />}
-        {tab === "grants" && <GrantsTab profile={profile} hasProfile={hasProfile} />}
+        {tab === "grants" && (
+          <GrantsTab profile={profile} hasProfile={hasProfile} onGoToProfile={() => setTab("profile")} />
+        )}
         {tab === "profile" && (
           <div className="rounded-lg border border-slate-200 bg-white p-5">
             <h2 className="text-sm font-semibold text-slate-800 mb-4">建立公司資料</h2>
