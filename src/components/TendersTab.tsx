@@ -236,6 +236,15 @@ export function TendersTab({ profile, hasProfile }: { profile: CompanyProfile; h
         </div>
       )}
 
+      {hasProfile && searched && (
+        <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+          <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+          {profile.businessCodes && profile.businessCodes.length > 0
+            ? "已套用您公司登記的所營事業代碼，點開每筆標案的「展開資格與金額資訊」可查看是否符合行業代碼限制（其餘資格條件因為是公文自由文字，僅標示警示提醒，無法自動判斷）。"
+            : "標案的行業代碼限制可比對您公司登記的所營事業代碼，但目前公司資料還沒有透過統一編號自動帶入，請到「公司資料」分頁填寫統一編號以啟用比對。"}
+        </div>
+      )}
+
       {searched && !loading && results.length > 0 && (
         <p className="text-xs text-slate-400">
           共 {totalRecords.toLocaleString()} 筆符合，僅顯示前 {results.length} 筆
