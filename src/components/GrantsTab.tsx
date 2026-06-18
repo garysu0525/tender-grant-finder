@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -279,8 +279,13 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
     return { pass, unknown, fail };
   }, [hasProfile, profile]);
 
+  const staticListRef = useRef<HTMLDivElement>(null);
+
   const toggleStatusFilter = (status: MatchStatus) => {
     setStatusFilter((s) => (s === status ? null : status));
+    requestAnimationFrame(() => {
+      staticListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   return (
@@ -344,19 +349,6 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
         </div>
       )}
 
-      {statusFilter && (
-        <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-          <span>
-            篩選中：只顯示「
-            {statusFilter === "pass" ? "符合" : statusFilter === "unknown" ? "待確認" : "不符"}
-            」的補助計畫
-          </span>
-          <button onClick={() => setStatusFilter(null)} className="font-medium text-slate-500 hover:text-slate-700">
-            清除篩選
-          </button>
-        </div>
-      )}
-
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <input
@@ -370,8 +362,21 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
 
       <LiveGrantsSection query={query} />
 
-      <div className="border-t border-slate-200 pt-4 space-y-4">
+      <div ref={staticListRef} className="border-t border-slate-200 pt-4 space-y-4 scroll-mt-4">
         <div className="text-sm font-semibold text-slate-700">長期性計畫（彙整自各部會公開資訊）</div>
+
+        {statusFilter && (
+          <div className="flex items-center justify-between rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-xs text-slate-700">
+            <span>
+              篩選中：只顯示「
+              {statusFilter === "pass" ? "符合" : statusFilter === "unknown" ? "待確認" : "不符"}
+              」的補助計畫
+            </span>
+            <button onClick={() => setStatusFilter(null)} className="font-medium text-slate-500 hover:text-slate-800">
+              清除篩選
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           {categories.map((c) => (
