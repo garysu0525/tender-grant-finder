@@ -12,7 +12,7 @@ import {
   Search,
   XCircle,
 } from "lucide-react";
-import type { CompanyProfile, Grant, GrantAcceptanceStatus, LiveGrantItem } from "../types";
+import type { CompanyProfile, Grant, GrantAcceptanceStatus, LiveGrantItem, MatchStatus } from "../types";
 import { GRANTS } from "../data/grants";
 import { evaluateGrantMatch } from "../lib/matchEngine";
 import { fetchLiveGrants, daysUntil, LiveGrantsApiError } from "../lib/liveGrantsApi";
@@ -255,11 +255,15 @@ function LiveGrantsSection({ query }: { query: string }) {
 export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<MatchStatus | null>(null);
   const categories = useMemo(() => ["all", ...new Set(GRANTS.map((g) => g.category))], []);
 
-  const filtered = GRANTS.filter((g) => category === "all" || g.category === category).filter((g) =>
-    matchesQuery([g.name, g.agency, g.category, g.summary], query)
-  );
+  const filtered = GRANTS.filter((g) => category === "all" || g.category === category)
+    .filter((g) => matchesQuery([g.name, g.agency, g.category, g.summary], query))
+    .filter((g) => {
+      if (!statusFilter || !hasProfile) return true;
+      return evaluateGrantMatch(profile, g.requirements).status === statusFilter;
+    });
 
   const matchSummary = useMemo(() => {
     if (!hasProfile) return null;
@@ -274,6 +278,10 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
     }
     return { pass, unknown, fail };
   }, [hasProfile, profile]);
+
+  const toggleStatusFilter = (status: MatchStatus) => {
+    setStatusFilter((s) => (s === status ? null : status));
+  };
 
   return (
     <div className="space-y-6">
@@ -298,25 +306,53 @@ export function GrantsTab({ profile, hasProfile, onGoToProfile }: Props) {
 
       {hasProfile && matchSummary && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-800">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-medium">
               已套用「{profile.companyName || "您的公司"}」資料比對 {GRANTS.length} 筆長期性計畫：
             </span>
-            <span className="inline-flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            <button
+              onClick={() => toggleStatusFilter("pass")}
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors ${
+                statusFilter === "pass" ? "bg-emerald-600 text-white" : "hover:bg-emerald-100"
+              }`}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
               符合 {matchSummary.pass}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <HelpCircle className="h-3.5 w-3.5 text-amber-600" />
+            </button>
+            <button
+              onClick={() => toggleStatusFilter("unknown")}
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors ${
+                statusFilter === "unknown" ? "bg-amber-600 text-white" : "hover:bg-amber-100"
+              }`}
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
               待確認 {matchSummary.unknown}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <XCircle className="h-3.5 w-3.5 text-rose-600" />
+            </button>
+            <button
+              onClick={() => toggleStatusFilter("fail")}
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors ${
+                statusFilter === "fail" ? "bg-rose-600 text-white" : "hover:bg-rose-100"
+              }`}
+            >
+              <XCircle className="h-3.5 w-3.5" />
               不符 {matchSummary.fail}
-            </span>
+            </button>
           </div>
           <button onClick={onGoToProfile} className="inline-flex items-center gap-1 font-medium hover:underline">
             編輯公司資料 <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+
+      {statusFilter && (
+        <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          <span>
+            篩選中：只顯示「
+            {statusFilter === "pass" ? "符合" : statusFilter === "unknown" ? "待確認" : "不符"}
+            」的補助計畫
+          </span>
+          <button onClick={() => setStatusFilter(null)} className="font-medium text-slate-500 hover:text-slate-700">
+            清除篩選
           </button>
         </div>
       )}
