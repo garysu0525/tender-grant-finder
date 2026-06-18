@@ -74,6 +74,11 @@ function GrantCard({ grant, profile, hasProfile }: { grant: Grant; profile: Comp
   );
 }
 
+const SOURCE_LABEL: Record<LiveGrantItem["source"], string> = {
+  nstc: "國科會",
+  moc: "文化部",
+};
+
 function LiveGrantCard({ item }: { item: LiveGrantItem }) {
   const remaining = daysUntil(item.endDate);
   return (
@@ -81,8 +86,11 @@ function LiveGrantCard({ item }: { item: LiveGrantItem }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium text-indigo-700">
+              {SOURCE_LABEL[item.source]}
+            </span>
             <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
-              {item.category || "國科會"}
+              {item.category || "未分類"}
             </span>
             {item.area && (
               <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
@@ -121,10 +129,14 @@ function LiveGrantCard({ item }: { item: LiveGrantItem }) {
   );
 }
 
+const LIVE_PAGE_SIZE = 10;
+
 function LiveGrantsSection() {
   const [items, setItems] = useState<LiveGrantItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<"all" | LiveGrantItem["source"]>("all");
+  const [visibleCount, setVisibleCount] = useState(LIVE_PAGE_SIZE);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,12 +155,38 @@ function LiveGrantsSection() {
     };
   }, []);
 
+  const filtered = (items || []).filter((i) => sourceFilter === "all" || i.source === sourceFilter);
+  const visible = filtered.slice(0, visibleCount);
+  const nstcCount = (items || []).filter((i) => i.source === "nstc").length;
+  const mocCount = (items || []).filter((i) => i.source === "moc").length;
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
         <Radio className="h-4 w-4 text-rose-500" />
-        即時公告（國科會計畫徵求專區，含真實截止倒數）
+        即時公告（國科會＋文化部，含真實截止倒數）
       </div>
+
+      {!loading && !error && items && (
+        <div className="flex flex-wrap gap-2">
+          {(["all", "nstc", "moc"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => {
+                setSourceFilter(s);
+                setVisibleCount(LIVE_PAGE_SIZE);
+              }}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                sourceFilter === s
+                  ? "border-slate-700 bg-slate-700 text-white"
+                  : "border-slate-300 text-slate-600 hover:border-slate-400"
+              }`}
+            >
+              {s === "all" ? `全部 ${items.length}` : s === "nstc" ? `國科會 ${nstcCount}` : `文化部 ${mocCount}`}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading && (
         <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -163,16 +201,26 @@ function LiveGrantsSection() {
         </div>
       )}
 
-      {!loading && !error && items && items.length === 0 && (
+      {!loading && !error && items && filtered.length === 0 && (
         <p className="text-xs text-slate-400">目前沒有抓到開放中的公告。</p>
       )}
 
-      {!loading && !error && items && items.length > 0 && (
-        <div className="space-y-3">
-          {items.map((item) => (
-            <LiveGrantCard key={item.id} item={item} />
-          ))}
-        </div>
+      {!loading && !error && items && filtered.length > 0 && (
+        <>
+          <div className="space-y-3">
+            {visible.map((item) => (
+              <LiveGrantCard key={item.id} item={item} />
+            ))}
+          </div>
+          {visibleCount < filtered.length && (
+            <button
+              onClick={() => setVisibleCount((c) => c + LIVE_PAGE_SIZE)}
+              className="w-full rounded-md border border-slate-200 py-2 text-xs text-slate-500 hover:border-slate-300 hover:text-slate-700"
+            >
+              顯示更多（{filtered.length - visibleCount} 筆）
+            </button>
+          )}
+        </>
       )}
     </div>
   );

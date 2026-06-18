@@ -180,24 +180,28 @@ export interface ImportedCompanyInfo {
   rawAddress: string;
 }
 
-// --- 即時補助公告（國科會計畫徵求專區，由 /api/live-grants 即時抓取）---
-// 國科會頁面是伺服器端渲染 HTML，不需要無頭瀏覽器；每筆公告有精確徵求期間，可顯示真實倒數。
+// --- 即時補助公告（國科會計畫徵求專區 + 文化部獎補助資訊網，由 /api/live-grants 即時抓取）---
+// 兩個來源都是伺服器端直接吐資料（國科會是渲染好的 HTML，文化部則有底層 JSON API），
+// 不需要無頭瀏覽器；每筆公告都有精確徵求/受理期間，可顯示真實倒數。
+
+export type LiveGrantSource = "nstc" | "moc";
 
 export interface LiveGrantItem {
   id: string;
-  source: "nstc";
+  source: LiveGrantSource;
   title: string;
   highlight: string;
   phase: string;
-  category: string;
-  area: string;
+  category: string; // nstc: 計畫類別；moc: 受理單位
+  area: string; // nstc: 計畫領域；moc: 獎補助對象
   periodText: string;
   startDate: string | null; // ISO 日期
-  endDate: string | null;
+  endDate: string | null; // ISO 日期時間（moc 精確到秒）
   url: string;
 }
 
 export interface LiveGrantsResponse {
   items: LiveGrantItem[];
   fetchedAt: string;
+  partial?: boolean; // 若為 true，代表至少一個來源抓取失敗，items 可能不完整
 }
