@@ -205,3 +205,31 @@ export interface LiveGrantsResponse {
   fetchedAt: string;
   partial?: boolean; // 若為 true，代表至少一個來源抓取失敗，items 可能不完整
 }
+
+// --- 「我要申請」追蹤清單（存在瀏覽器 localStorage，不上傳伺服器）---
+
+export type TrackedKind = "static-grant" | "live-grant";
+export type TrackedStatus = "interested" | "preparing" | "submitted";
+
+export interface ChecklistItem {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
+export interface TrackedItem {
+  id: string; // 對應 Grant.id 或 LiveGrantItem.id
+  kind: TrackedKind;
+  name: string;
+  agency: string;
+  url: string;
+  deadlineText: string | null; // 顯示用，例如「依年度公告期間」或精確日期字串
+  endDate: string | null; // ISO 日期時間，加入追蹤當下記錄的精確截止日（只有即時公告有），用於倒數提醒與時程規劃
+  status: TrackedStatus;
+  addedAt: string; // ISO 時間戳
+  checklist: ChecklistItem[];
+  grantSummary?: string; // 加入追蹤當下記錄的計畫簡介，供 AI 草稿生成使用
+  requirementNotes?: string;
+  projectDescription?: string; // 使用者填寫的「這次申請想做的計畫/產品簡述」，AI 草稿生成的關鍵輸入
+  aiDraft?: string; // AI 生成的申請草稿（使用者可編輯）
+}
